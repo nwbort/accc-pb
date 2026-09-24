@@ -2,7 +2,9 @@ name: ACCC public benefit phase monitor
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    # Offset from :00/:10/... — GitHub drops scheduled runs first on the
+    # busiest minutes, and a */10 cron lands on every one of them.
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch:
 
 permissions:
