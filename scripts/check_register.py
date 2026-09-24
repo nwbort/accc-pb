@@ -22,10 +22,9 @@ ITEM_PATH = "/public-registers/acquisitions-and-mergers-registers/acquisitions-r
 EMPTY_TEXT = "Couldn't find any matches"
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-    ),
+    # An honest bot UA, as mergers.fyi's scraper uses. The ACCC's WAF 403s a
+    # browser UA that doesn't come with a browser's TLS/header fingerprint.
+    "User-Agent": "Mozilla/5.0 (compatible; accc-pb/1.0; +https://github.com/nwbort/accc-pb)",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-AU,en;q=0.9",
 }
