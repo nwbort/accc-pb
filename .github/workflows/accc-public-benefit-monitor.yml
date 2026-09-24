@@ -1,0 +1,67 @@
+name: ACCC public benefit phase monitor
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: accc-monitor
+  cancel-in-progress: false
+
+env:
+  # Public ntfy topic. Subscribe at https://ntfy.sh/<topic> or in the ntfy app.
+  # Override by setting a repository variable named NTFY_TOPIC.
+  NTFY_TOPIC: ${{ vars.NTFY_TOPIC || 'accc-pb-21d918be437e' }}
+  SENT_MARKER: .ntfy-sent
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip if already notified
+        id: marker
+        run: |
+          if [ -f "$SENT_MARKER" ]; then
+            echo "Notification already sent:"; cat "$SENT_MARKER"
+            echo "sent=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sent=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check register
+        id: check
+        if: steps.marker.outputs.sent == 'false'
+        run: python3 scripts/check_register.py
+
+      - name: Send ntfy notification
+        if: steps.marker.outputs.sent == 'false' && steps.check.outputs.count != '0'
+        env:
+          ITEMS: ${{ steps.check.outputs.items }}
+          COUNT: ${{ steps.check.outputs.count }}
+        run: |
+          url='https://www.accc.gov.au/public-registers/acquisitions-and-mergers-registers/acquisitions-register?f%5B0%5D=stage%3Apublic_benefit_phase'
+          curl -fsS \
+            -H "Title: ACCC: $COUNT acquisition(s) in public benefit phase" \
+            -H "Priority: high" \
+            -H "Tags: rotating_light" \
+            -H "Click: $url" \
+            -d "$ITEMS" \
+            "https://ntfy.sh/$NTFY_TOPIC"
+
+      - name: Record that the notification was sent
+        if: steps.marker.outputs.sent == 'false' && steps.check.outputs.count != '0'
+        env:
+          ITEMS: ${{ steps.check.outputs.items }}
+        run: |
+          { date -u +%Y-%m-%dT%H:%M:%SZ; printf '%s\n' "$ITEMS"; } > "$SENT_MARKER"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$SENT_MARKER"
+          git commit -m "Record ACCC public benefit ntfy notification"
+          git push
