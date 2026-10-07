@@ -36,10 +36,20 @@ jobs:
             echo "sent=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - uses: actions/setup-python@v7
+        if: steps.marker.outputs.sent == 'false'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        if: steps.marker.outputs.sent == 'false'
+        run: pip install -r requirements.txt
+
       - name: Check register
         id: check
         if: steps.marker.outputs.sent == 'false'
-        run: python3 scripts/check_register.py
+        run: python scripts/check_register.py
 
       - name: Send ntfy notification
         if: steps.marker.outputs.sent == 'false' && steps.check.outputs.count != '0'
