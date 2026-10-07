@@ -10,9 +10,10 @@ import json
 import os
 import re
 import sys
-import urllib.request
 from html import unescape
 from urllib.parse import unquote, urljoin
+
+from curl_cffi import requests
 
 URL = (
     "https://www.accc.gov.au/public-registers/acquisitions-and-mergers-registers/"
@@ -21,19 +22,13 @@ URL = (
 ITEM_PATH = "/public-registers/acquisitions-and-mergers-registers/acquisitions-register/"
 EMPTY_TEXT = "Couldn't find any matches"
 
-HEADERS = {
-    # An honest bot UA, as mergers.fyi's scraper uses. The ACCC's WAF 403s a
-    # browser UA that doesn't come with a browser's TLS/header fingerprint.
-    "User-Agent": "Mozilla/5.0 (compatible; accc-pb/1.0; +https://github.com/nwbort/accc-pb)",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-AU,en;q=0.9",
-}
-
-
+# The ACCC's WAF fingerprints the TLS handshake, not just the User-Agent, so a
+# plain urllib request is blocked whatever UA it sends. curl_cffi impersonates
+# Chrome's handshake and headers, as mergers.fyi's scraper does.
 def fetch(url):
-    req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return resp.read().decode("utf-8", errors="replace")
+    resp = requests.get(url, impersonate="chrome", timeout=60)
+    resp.raise_for_status()
+    return resp.text
 
 
 def parse(html):
